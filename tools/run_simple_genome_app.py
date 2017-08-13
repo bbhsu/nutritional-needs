@@ -1,4 +1,3 @@
-from os import listdir
 from os.path import basename, dirname, join, realpath
 
 from g2p import read_g2p, write_g2p
@@ -8,26 +7,34 @@ GENOME_APP_DIRECTORY_PATH = dirname(dirname(realpath(__file__)))
 
 GENOME_APP_NAME = basename(GENOME_APP_DIRECTORY_PATH)
 
-VCF_FILE_PATH = join(GENOME_APP_DIRECTORY_PATH, 'input/dna.vcf.gz')
+INPUT_DIRECTORY_PATH = join(GENOME_APP_DIRECTORY_PATH, 'input/')
+PERSON_DIRECTORY_PATH = join(INPUT_DIRECTORY_PATH, 'person/')
+GRCH_DIRECTORY_PATH = join(INPUT_DIRECTORY_PATH, 'grch/')
+
+TOOLS_DIRECTORY_PATH = join(GENOME_APP_DIRECTORY_PATH, 'tools/')
+OUTPUT_DIRECTORY_PATH = join(GENOME_APP_DIRECTORY_PATH, 'output/')
+MEDIA_DIRECTORY_PATH = join(GENOME_APP_DIRECTORY_PATH, 'media/')
 
 
 def run_simple_genome_app():
     """
     Run this Simple Genome App.
-    return: None
+    Arguments:
+        None
+    Returns:
+        None
     """
 
     # Read input .g2p file
-    input_directory_path = join(GENOME_APP_DIRECTORY_PATH, 'input/')
-    input_g2p_file_paths = [
-        join(input_directory_path, fn) for fn in listdir(input_directory_path)
-        if fn.endswith('.g2p')
-    ]
-    headers, input_g2p_df = read_g2p(input_g2p_file_paths[0])
+    input_g2p = read_g2p(
+        join(INPUT_DIRECTORY_PATH, '{}.g2p'.format(GENOME_APP_NAME)))
 
-    # Analyze with the input .g2p file
+    # Get .vcf file path
+    vcf_file_path = join(PERSON_DIRECTORY_PATH, 'genome.vcf.gz')
+
+    # Analyze
     match_indices = []
-    for i, row in input_g2p_df.iterrows():
+    for i, row in input_g2p['table'].iterrows():
 
         feature, feature_type, region, state = row[:4]
         state = str(state)
@@ -36,9 +43,10 @@ def run_simple_genome_app():
                 feature.split(';'),
                 feature_type.split(';'), region.split(';'), state.split(';')):
 
-            variants = get_vcf_variants_by_tabix(VCF_FILE_PATH, query_str=r)
+            print('Querying {} ...'.format(r))
+            variants = get_vcf_variants_by_tabix(vcf_file_path, query_str=r)
 
-            # Check for matches in the .vcf file
+            print('\tFound {} variants.'.format(len(variants)))
             if len(variants):
 
                 if ft == 'variant':
@@ -48,6 +56,7 @@ def run_simple_genome_app():
                     if alleles == sample_genotype or alleles == reversed(
                             sample_genotype):
                         match_indices.append(i)
+                        print('\t\t{}'.format(row))
 
                 elif ft == 'gene':
 
@@ -60,25 +69,27 @@ def run_simple_genome_app():
 
                     max_impact = 0
 
+                    # Get maximum impact
                     for v in variants:
                         for a_i, a_d in v['ANN'].items():
-                            if max_impact < impact_to_int(a_d['impact']):
-                                max_impact = impact_to_int
+                            an_impact = impact_to_int[a_d['impact']]
+                            if max_impact < an_impact:
+                                max_impact = an_impact
 
                     if impact_to_int.get(s, 2) <= max_impact:
                         match_indices.append(i)
+                        print('\t\t{}'.format(row))
 
-    if len(match_indices):  # Keep matching results
-        output_g2p_df = input_g2p_df.loc[match_indices, :]
+    # If there is any match, write output.g2p file, which contains only the
+    # matched input .g2p rows
+    output_g2p_table = input_g2p['table'].loc[match_indices, :]
 
-        # Write output .g2p file
-        output_directory_path = join(GENOME_APP_DIRECTORY_PATH, 'output/')
-        output_g2p_file_paths = [
-            join(output_directory_path, fn)
-            for fn in listdir(output_directory_path) if fn.endswith('.g2p')
-        ]
-        write_g2p(output_g2p_df, output_g2p_file_paths[0], headers=headers)
+    write_g2p({
+        'header': input_g2p['header'],
+        'table': output_g2p_table
+    }, join(OUTPUT_DIRECTORY_PATH, 'output.g2p'))
 
-        print(
-            'This Genome App was run and the output was saved as a table in /output/{}.g2p.\n{}'.
-            format(GENOME_APP_NAME, output_g2p_df))
+    print('This Genome App run and outputed /output/output.g2p:')
+    print('=' * 80)
+    print(output_g2p_table)
+    print('=' * 80)

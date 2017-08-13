@@ -1,0 +1,3 @@
+# Action.description=Suggested actions to take based on your result.
+FEATURE	FEATURE TYPE	REGION	STATE	PHENOTYPE	REFERENCE	Action
+rs4654748	variant	1:21459575-21459575	C|T	Likely to have lower blood level of vitamin B6.	Tanaka T, Scheet P, Giusti B, et al. Genome-wide association study of vitamin B6, vitamin B12, folate, and homocysteine blood concentrations. Am J Hum Genet. 2009;84(4):477-82.|Hazra A, Kraft P, Lazarus R, et al. Genome-wide significant predictors of metabolites in the one-carbon metabolism pathway. Hum Mol Genet. 2009;18(23):4677-87.	Optimize intake of vitamin B6 by eating foods rich in vitamin B6.
